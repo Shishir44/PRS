@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}PRS - Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2>Welcome, {{ username }}!</h2>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="card-title">User Information</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Username:</strong> {{ username }}</p>
+        <p><strong>Role:</strong> {{ role }}</p>
+        
+        <hr>
+        
+        <div class="alert alert-info">
+            <p>Please navigate to your role-specific dashboard using the menu.</p>
+        </div>
+        
+        <div class="d-grid gap-2 col-md-6 mx-auto mt-4">
+            <button onclick="navigateHome()" class="btn btn-primary">Return to Home</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    /**
+     * Function to navigate back to home page
+     */
+    function navigateHome() {
+        window.location.href = "{% url 'home' %}";
+    }
+</script>
+{% endblock %}

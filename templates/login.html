@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}PRS - Login{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="card-title mb-0">Login</h4>
+            </div>
+            <div class="card-body">
+                {% if error_message %}
+                <div class="alert alert-danger" role="alert">
+                    {{ error_message }}
+                </div>
+                {% endif %}
+                
+                <form method="post" action="{% url 'login' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <!-- Note: Password field is omitted for MVP simplicity -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary" onclick="handleLogin()">Login</button>
+                    </div>
+                </form>
+                
+                <hr>
+                <div class="text-center">
+                    <p>Don't have an account? <a href="{% url 'register' %}">Register here</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    /**
+     * Function to handle login form submission
+     * This is a client-side validation before the form is submitted
+     */
+    function handleLogin() {
+        const username = document.getElementById('username').value;
+        if (!username.trim()) {
+            alert('Please enter a username');
+            event.preventDefault();
+            return false;
+        }
+        return true;
+    }
+</script>
+{% endblock %}

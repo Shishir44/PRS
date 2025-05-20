@@ -1,0 +1,432 @@
+{% extends 'base.html' %}
+
+{% block title %}PRS - Supervisor Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2>Project Management</h2>
+        <p class="lead">Manage projects assigned to you from verified deals.</p>
+    </div>
+</div>
+
+<!-- Project Status Filters -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold">My Projects</h6>
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-primary" onclick="filterProjects('all')">All</button>
+            <button type="button" class="btn btn-outline-secondary" onclick="filterProjects('pending')">Pending</button>
+            <button type="button" class="btn btn-outline-info" onclick="filterProjects('in_progress')">In Progress</button>
+            <button type="button" class="btn btn-outline-success" onclick="filterProjects('completed')">Completed</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="projectsContainer" class="mb-4">
+            <div class="text-center py-5" id="loadingProjects">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading your assigned projects...</p>
+            </div>
+            <div id="noProjectsMessage" class="text-center py-4" style="display: none;">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <span>You don't have any assigned projects at the moment.</span>
+                </div>
+            </div>
+            <div id="projectsList">
+                <!-- Projects will be loaded here dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Project Details Modal -->
+<div class="modal fade" id="projectDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Project Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="projectDetailsContent">
+                    <!-- Content loaded dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <div class="btn-group" id="statusUpdateButtons">
+                    <button type="button" class="btn btn-info" onclick="updateProjectStatus('in_progress')">Mark In Progress</button>
+                    <button type="button" class="btn btn-success" onclick="updateProjectStatus('completed')">Mark Completed</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File Preview Modal -->
+<div class="modal fade" id="filePreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">File Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="filePreviewContent">
+                    <!-- File preview content loaded dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="downloadFileBtn" href="#" class="btn btn-primary" download>Download File</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Global variables
+    let currentProjectId = null;
+    let allProjects = [];
+    let currentFilter = 'all';
+    
+    /**
+     * Function to load all projects assigned to the supervisor
+     */
+    function loadSupervisorProjects() {
+        // Show loading indicator
+        document.getElementById('loadingProjects').style.display = 'block';
+        document.getElementById('noProjectsMessage').style.display = 'none';
+        document.getElementById('projectsList').innerHTML = '';
+        
+        // Fetch projects from API
+        fetch(`/api/projects/?supervisor={{ username }}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Supervisor projects:', data);
+                document.getElementById('loadingProjects').style.display = 'none';
+                
+                if (data.success) {
+                    allProjects = data.projects || [];
+                    
+                    if (allProjects.length === 0) {
+                        document.getElementById('noProjectsMessage').style.display = 'block';
+                    } else {
+                        renderProjects(allProjects);
+                    }
+                } else {
+                    // Show error message
+                    document.getElementById('projectsList').innerHTML = `
+                        <div class="alert alert-danger">
+                            <p>Error loading projects: ${data.error}</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching projects:', error);
+                document.getElementById('loadingProjects').style.display = 'none';
+                document.getElementById('projectsList').innerHTML = `
+                    <div class="alert alert-danger">
+                        <p>Error: Could not fetch projects. Please try again later.</p>
+                    </div>
+                `;
+            });
+    }
+    
+    /**
+     * Function to render projects list with filtering
+     * @param {Array} projects - Array of project objects
+     */
+    function renderProjects(projects) {
+        const projectsList = document.getElementById('projectsList');
+        projectsList.innerHTML = '';
+        
+        // Filter projects if needed
+        let filteredProjects = projects;
+        if (currentFilter !== 'all') {
+            filteredProjects = projects.filter(p => p.status === currentFilter);
+        }
+        
+        if (filteredProjects.length === 0) {
+            projectsList.innerHTML = `
+                <div class="alert alert-info text-center">
+                    <p>No projects matching the current filter.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Create project cards
+        filteredProjects.forEach(project => {
+            const deadlineDate = project.deadline ? new Date(project.deadline) : null;
+            const formattedDeadline = deadlineDate ? deadlineDate.toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            }) : 'No deadline set';
+            
+            // Determine status badge class
+            let statusBadgeClass = '';
+            let statusIcon = '';
+            switch (project.status) {
+                case 'pending':
+                    statusBadgeClass = 'bg-secondary';
+                    statusIcon = 'hourglass-split';
+                    break;
+                case 'in_progress':
+                    statusBadgeClass = 'bg-info';
+                    statusIcon = 'arrow-right-circle-fill';
+                    break;
+                case 'completed':
+                    statusBadgeClass = 'bg-success';
+                    statusIcon = 'check-circle-fill';
+                    break;
+                default:
+                    statusBadgeClass = 'bg-secondary';
+                    statusIcon = 'question-circle';
+            }
+            
+            // Check if deadline is past
+            let deadlineClass = '';
+            let deadlineWarning = '';
+            if (deadlineDate && deadlineDate < new Date() && project.status !== 'completed') {
+                deadlineClass = 'text-danger';
+                deadlineWarning = '<span class="badge bg-danger ms-2">Overdue</span>';
+            }
+            
+            // Create card HTML
+            const projectCard = document.createElement('div');
+            projectCard.className = 'card mb-3 project-card';
+            projectCard.dataset.projectId = project.id;
+            projectCard.dataset.status = project.status;
+            
+            projectCard.innerHTML = `
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">${project.name}</h6>
+                    <span class="badge ${statusBadgeClass}">
+                        <i class="bi bi-${statusIcon} me-1"></i>
+                        ${project.status.replace('_', ' ').toUpperCase()}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <p class="mb-2">${project.description || 'No description provided'}</p>
+                            <p class="mb-2 ${deadlineClass}">
+                                <strong>Deadline:</strong> ${formattedDeadline} ${deadlineWarning}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button class="btn btn-primary btn-sm" onclick="viewProjectDetails('${project.id}')">
+                                <i class="bi bi-eye me-1"></i> View Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-muted">
+                    <small>Created: ${new Date(project.created_at).toLocaleDateString()}</small>
+                    <small class="float-end">Last updated: ${new Date(project.updated_at).toLocaleDateString()}</small>
+                </div>
+            `;
+            
+            projectsList.appendChild(projectCard);
+        });
+    }
+    
+    /**
+     * Function to filter projects by status
+     * @param {string} status - Status to filter by
+     */
+    function filterProjects(status) {
+        currentFilter = status;
+        renderProjects(allProjects);
+        
+        // Update active button
+        document.querySelectorAll('.card-header .btn-group .btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        const filterBtn = document.querySelector(`.btn[onclick="filterProjects('${status}')"]`);
+        if (filterBtn) {
+            filterBtn.classList.add('active');
+        }
+    }
+    
+    /**
+     * Function to view project details
+     * @param {string} projectId - ID of the project to view
+     */
+    function viewProjectDetails(projectId) {
+        currentProjectId = projectId;
+        
+        // Find project in loaded data
+        const project = allProjects.find(p => p.id === projectId);
+        if (!project) {
+            alert('Project not found.');
+            return;
+        }
+        
+        // Format dates
+        const createdDate = new Date(project.created_at);
+        const updatedDate = new Date(project.updated_at);
+        const deadline = project.deadline ? new Date(project.deadline) : null;
+        
+        // Determine status badge
+        let statusBadgeClass = '';
+        switch (project.status) {
+            case 'pending':
+                statusBadgeClass = 'bg-secondary';
+                break;
+            case 'in_progress':
+                statusBadgeClass = 'bg-info';
+                break;
+            case 'completed':
+                statusBadgeClass = 'bg-success';
+                break;
+            default:
+                statusBadgeClass = 'bg-secondary';
+        }
+        
+        // Prepare status update buttons
+        const statusButtons = document.getElementById('statusUpdateButtons');
+        if (project.status === 'pending') {
+            statusButtons.innerHTML = `
+                <button type="button" class="btn btn-info" onclick="updateProjectStatus('in_progress')">Mark In Progress</button>
+                <button type="button" class="btn btn-success" onclick="updateProjectStatus('completed')">Mark Completed</button>
+            `;
+        } else if (project.status === 'in_progress') {
+            statusButtons.innerHTML = `
+                <button type="button" class="btn btn-success" onclick="updateProjectStatus('completed')">Mark Completed</button>
+            `;
+        } else if (project.status === 'completed') {
+            statusButtons.innerHTML = `
+                <button type="button" class="btn btn-info" onclick="updateProjectStatus('in_progress')">Reopen Project</button>
+            `;
+        }
+        
+        // Create files section if project has files
+        let filesSection = '<p>No files attached to this project.</p>';
+        
+        if (project.files) {
+            filesSection = `
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">Project Files</h6>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-outline-primary" onclick="viewProjectFiles('${project.files}')">
+                            <i class="bi bi-folder me-1"></i> View Project Files
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Populate modal content
+        document.getElementById('projectDetailsContent').innerHTML = `
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">${project.name}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <span class="badge ${statusBadgeClass} p-2">
+                            ${project.status.replace('_', ' ').toUpperCase()}
+                        </span>
+                    </div>
+                    
+                    <p class="mb-3">${project.description || 'No description provided'}</p>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Created:</strong> ${createdDate.toLocaleString()}</p>
+                            <p class="mb-1"><strong>Last Updated:</strong> ${updatedDate.toLocaleString()}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Deadline:</strong> ${deadline ? deadline.toLocaleDateString() : 'No deadline set'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            ${filesSection}
+        `;
+        
+        // Show the modal
+        const modal = new bootstrap.Modal(document.getElementById('projectDetailsModal'));
+        modal.show();
+    }
+    
+    /**
+     * Function to view project files
+     * @param {string} filePath - Path to project files directory
+     */
+    function viewProjectFiles(filePath) {
+        // In a real implementation, this would make an API call to list files in the directory
+        // For demonstration, we'll show a message about accessing files
+        alert('In a production environment, this would show the list of files in the project directory: ' + filePath);
+    }
+    
+    /**
+     * Function to update project status
+     * @param {string} newStatus - New status for the project
+     */
+    function updateProjectStatus(newStatus) {
+        if (!currentProjectId) {
+            alert('No project selected.');
+            return;
+        }
+        
+        // Confirm status change
+        const statusDisplay = newStatus.replace('_', ' ').toUpperCase();
+        if (!confirm(`Are you sure you want to change this project's status to ${statusDisplay}?`)) {
+            return;
+        }
+        
+        // Prepare request data
+        const requestData = {
+            status: newStatus,
+            supervisor: '{{ username }}'
+        };
+        
+        // Send update request
+        fetch(`/api/projects/${currentProjectId}/update-status/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Project status updated successfully!');
+                
+                // Close the modal
+                bootstrap.Modal.getInstance(document.getElementById('projectDetailsModal')).hide();
+                
+                // Reload projects
+                loadSupervisorProjects();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error updating project status:', error);
+            alert('An error occurred while updating the project status.');
+        });
+    }
+    
+    // Load projects when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSupervisorProjects();
+        
+        // Set initial active filter
+        document.querySelector('.btn[onclick="filterProjects(\'all\')"]').classList.add('active');
+    });
+</script>
+{% endblock %}
