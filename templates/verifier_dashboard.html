@@ -1,0 +1,482 @@
+{% extends 'base.html' %}
+
+{% block title %}PRS - Verifier Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2>Deals Pending Verification</h2>
+    </div>
+</div>
+
+<!-- Deal List -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold">Deals Requiring Review</h6>
+    </div>
+    <div class="card-body">
+        {% if deals %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Client</th>
+                        <th>Budget</th>
+                        <th>Created By</th>
+                        <th>Created</th>
+                        <th>Receipt</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for deal in deals %}
+                    <tr>
+                        <td>{{ deal.title }}</td>
+                        <td>{{ deal.client_name }}</td>
+                        <td>${{ deal.budget }}</td>
+                        <td>{{ deal.created_by }}</td>
+                        <td>{{ deal.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            {% if deal.receipt_file %}
+                            <a href="/media/{{ deal.receipt_file }}" target="_blank" class="btn btn-sm btn-outline-info">View</a>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">No Receipt</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="viewDealDetails('{{ deal.id }}')">Details</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-center">No deals pending verification at this time.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Deal Details Modal -->
+<div class="modal fade" id="dealDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Deal Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="dealDetailsContent">
+                    <!-- Content loaded dynamically -->
+                </div>
+                
+                <hr>
+                <div id="verificationActions" class="mt-4">
+                    <h5>Verification Actions</h5>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="rejectionReason" class="form-label">Rejection Reason (required if rejecting)</label>
+                                <textarea class="form-control" id="rejectionReason" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-danger" onclick="verifyDeal('reject')">Reject Deal</button>
+                        <button type="button" class="btn btn-success" onclick="verifyDeal('approve')">Approve Deal</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Document Preview Modal -->
+<div class="modal fade" id="documentPreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Receipt Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="documentPreviewContent">
+                    <!-- Content loaded dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="downloadDocumentBtn" href="#" class="btn btn-primary" download>Download Document</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentDealId = null;
+    let currentDealData = null;
+    
+    /**
+     * Function to view deal details
+     * @param {string} dealId - The ID of the deal to view
+     */
+    function viewDealDetails(dealId) {
+        console.log('viewDealDetails called with ID:', dealId);
+        currentDealId = dealId;
+        
+        // Show a loading indicator
+        document.getElementById('dealDetailsContent').innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div><p>Loading deal details...</p></div>';
+        
+        // Open the modal right away to provide immediate feedback
+        try {
+            const dealDetailsModal = new bootstrap.Modal(document.getElementById('dealDetailsModal'));
+            dealDetailsModal.show();
+        } catch (error) {
+            console.error('Error showing modal:', error);
+            alert('Error displaying details modal. Please check if Bootstrap is properly loaded.');
+            return; // Exit if modal can't be shown
+        }
+        
+        // Fetch all deals with status=all to ensure we can find the deal even if it's not in pending verification
+        fetch(`/api/deals/?username={{ username }}&role=verifier&status=all`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('API response:', data);
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'API returned failure status');
+                }
+                
+                if (!data.deals || !Array.isArray(data.deals) || data.deals.length === 0) {
+                    throw new Error('No deals found in API response');
+                }
+                
+                // Try to find the deal by ID with multiple matching approaches
+                let deal = null;
+                
+                // Try exact match first
+                deal = data.deals.find(d => d.id === dealId);
+                
+                // Try string comparison if exact match fails
+                if (!deal) {
+                    deal = data.deals.find(d => String(d.id) === String(dealId));
+                }
+                
+                // Last resort - try with toString method
+                if (!deal) {
+                    deal = data.deals.find(d => d.id && d.id.toString() === dealId.toString());
+                }
+                
+                if (deal) {
+                    console.log('Found matching deal:', deal);
+                    currentDealData = deal;
+                    renderDealDetails(deal);
+                } else {
+                    console.error('Deal not found. Available IDs:', data.deals.map(d => d.id));
+                    document.getElementById('dealDetailsContent').innerHTML = `
+                        <div class="alert alert-warning">
+                            <h5>Deal Not Found</h5>
+                            <p>Could not find the deal with ID: ${dealId}</p>
+                            <p>This could be because the deal has been processed or removed.</p>
+                            <button class="btn btn-primary mt-2" onclick="window.location.reload()">Refresh Page</button>
+                        </div>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching deal details:', error);
+                document.getElementById('dealDetailsContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5>Error Loading Deal</h5>
+                        <p>${error.message}</p>
+                        <button class="btn btn-primary mt-2" onclick="window.location.reload()">Refresh Page</button>
+                    </div>`;
+            });
+    }
+    
+    /**
+     * Function to render deal details in the modal
+     * @param {Object} deal - The deal object to render
+     */
+    function renderDealDetails(deal) {
+        console.log('Rendering deal details:', deal);
+        
+        // Format date nicely
+        const createdDate = new Date(deal.created_at);
+        const dateFormatted = createdDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        const timeFormatted = createdDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        // Prepare receipt display section
+        let receiptHtml = '';
+        
+        if (deal.receipt_file) {
+            // Get file extension to show appropriate icon
+            const fileExt = deal.receipt_file.split('.').pop().toLowerCase();
+            const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(fileExt);
+            const isPdf = fileExt === 'pdf';
+            
+            receiptHtml = `
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title">Receipt Document</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Filename:</strong> ${deal.receipt_file.split('/').pop()}</p>
+                    <p><strong>Type:</strong> ${deal.receipt_file.split('.').pop().toUpperCase()}</p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" onclick="previewDocument('/media/${deal.receipt_file}')">
+                            <i class="bi bi-eye"></i> Preview Receipt
+                        </button>
+                        <a href="/media/${deal.receipt_file}" class="btn btn-outline-primary" download>
+                            <i class="bi bi-download"></i> Download Receipt
+                        </a>
+                    </div>
+                </div>
+            </div>
+            `;
+        } else {
+            receiptHtml = `
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="m-0">Receipt Document</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <span>No receipt file attached to this deal. Verification may not be possible without supporting documentation.</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Render the full deal details with all required information
+        document.getElementById('dealDetailsContent').innerHTML = `
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="m-0">${deal.title}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <span class="badge bg-${deal.status === 'pending_verification' ? 'info' : deal.status === 'verified' ? 'success' : 'warning'} p-2">
+                            <i class="bi bi-${deal.status === 'pending_verification' ? 'hourglass-split' : deal.status === 'verified' ? 'check-circle' : 'x-circle'} me-1"></i>
+                            ${deal.status === 'pending_verification' ? 'Pending Verification' : deal.status === 'verified' ? 'Verified' : 'Rejected'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">Financial Details</h5>
+                    <p class="mb-1"><strong>Budget:</strong> $${deal.budget || '0'}</p>
+                    <p class="mb-1"><strong>Advance Payment:</strong> $${deal.advance_payment || '0'}</p>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">Creation Details</h5>
+                    <p class="mb-1"><strong>Created By:</strong> ${deal.created_by || 'Unknown'}</p>
+                    <p class="mb-1"><strong>Created:</strong> ${dateFormatted} at ${timeFormatted}</p>
+                    <p class="mb-1"><strong>Description:</strong> ${deal.description || 'No description provided'}</p>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">Deal Status</h5>
+                    <p class="mb-1"><strong>Current Status:</strong> ${deal.status === 'pending_verification' ? 'Pending Verification' : deal.status === 'verified' ? 'Verified' : deal.status === 'rejected' ? 'Rejected' : deal.status || 'Unknown'}</p>
+                    ${deal.verified_by ? `<p class="mb-1"><strong>Verified By:</strong> ${deal.verified_by}</p>` : ''}
+                    ${deal.verified_at ? `<p class="mb-1"><strong>Verified At:</strong> ${new Date(deal.verified_at).toLocaleString()}</p>` : ''}
+                    ${deal.rejection_reason ? `<p class="mb-1"><strong>Rejection Reason:</strong> ${deal.rejection_reason}</p>` : ''}
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-body bg-light">
+                    <h5 class="card-title">Requirements</h5>
+                    <p>${deal.requirements || 'No specific requirements provided for this deal.'}</p>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">Client Information</h5>
+                    <p class="mb-1"><strong>Client Name:</strong> ${deal.client_name || 'Not provided'}</p>
+                    <p class="mb-1"><strong>Contact Information:</strong> ${deal.contact_info || 'Not provided'}</p>
+                    <p class="mb-1"><strong>Multi-Project Deal:</strong> ${deal.is_multiproject ? 'Yes' : 'No'}</p>
+                </div>
+            </div>
+            
+            ${receiptHtml}
+        `;
+    }
+    
+    /**
+     * Function to preview a document in a modal
+     * @param {string} documentUrl - URL of the document to preview
+     */
+    function previewDocument(documentUrl) {
+        console.log('Previewing document:', documentUrl);
+        
+        // Try to create and show the modal first
+        let previewModal;
+        try {
+            previewModal = new bootstrap.Modal(document.getElementById('documentPreviewModal'));
+        } catch (error) {
+            console.error('Error creating document preview modal:', error);
+            alert('Could not open document preview. Please check if Bootstrap is properly loaded.');
+            return;
+        }
+        
+        const previewContent = document.getElementById('documentPreviewContent');
+        const downloadBtn = document.getElementById('downloadDocumentBtn');
+        
+        // Show loading indicator
+        previewContent.innerHTML = `
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            <p class="text-center mt-2">Loading document preview...</p>
+        `;
+        
+        // Set download link
+        downloadBtn.href = documentUrl;
+        
+        // Get file name from URL for a better user experience
+        const fileName = documentUrl.split('/').pop();
+        downloadBtn.setAttribute('download', fileName);
+        
+        // Determine the document type from the URL
+        const fileExtension = documentUrl.split('.').pop().toLowerCase();
+        
+        // Show the modal before attempting to load content
+        previewModal.show();
+        
+        // Use a timeout to ensure the modal is visible before loading content
+        setTimeout(() => {
+            try {
+                if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
+                    // Image preview with error handling
+                    const img = new Image();
+                    img.onload = function() {
+                        previewContent.innerHTML = `
+                            <img src="${documentUrl}" class="img-fluid" alt="Receipt Image">
+                        `;
+                    };
+                    img.onerror = function() {
+                        previewContent.innerHTML = `
+                            <div class="alert alert-danger">
+                                <p>Failed to load image. The file may be missing or corrupted.</p>
+                            </div>
+                        `;
+                    };
+                    img.src = documentUrl;
+                    
+                } else if (fileExtension === 'pdf') {
+                    // PDF preview
+                    previewContent.innerHTML = `
+                        <div class="ratio ratio-16x9" style="height: 600px;">
+                            <iframe src="${documentUrl}" allowfullscreen></iframe>
+                        </div>
+                    `;
+                } else {
+                    // Other file types that can't be previewed directly
+                    previewContent.innerHTML = `
+                        <div class="alert alert-info">
+                            <p>This file type (${fileExtension}) can't be previewed directly in the browser.</p>
+                            <p>Please use the download button to view the file.</p>
+                            <p class="mb-0"><strong>File:</strong> ${fileName}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error rendering document preview:', error);
+                previewContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <p>Error displaying document preview: ${error.message}</p>
+                        <p>Please try downloading the file instead.</p>
+                    </div>
+                `;
+            }
+        }, 100);
+    }
+    
+    /**
+     * Function to verify a deal (approve or reject)
+     */
+    function verifyDeal(action) {
+        if (!currentDealId) {
+            alert('No deal selected for verification.');
+            return;
+        }
+        
+        // If rejecting, require a reason
+        const rejectionReason = document.getElementById('rejectionReason').value;
+        if (action === 'reject' && !rejectionReason.trim()) {
+            alert('Please provide a reason for rejection.');
+            return;
+        }
+        
+        // Confirmation dialog
+        const confirmMessage = action === 'approve' 
+            ? 'Are you sure you want to approve this deal?' 
+            : 'Are you sure you want to reject this deal?';
+            
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+        
+        // Build verification data
+        const verificationData = {
+            action: action === 'approve' ? 'approve' : 'reject',
+            verifier: '{{ username }}',
+            reason: rejectionReason
+        };
+        
+        // Submit verification
+        fetch(`/api/deals/${currentDealId}/verify/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(verificationData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(action === 'approve' 
+                    ? 'Deal approved successfully!' 
+                    : 'Deal rejected successfully!');
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred during verification.');
+        });
+    }
+</script>
+{% endblock %}
