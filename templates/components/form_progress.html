@@ -1,0 +1,39 @@
+{% comment %}
+Reusable Form Progress Component
+Parameters:
+- current_step: Active step index (1-based)
+- steps: List of steps with 'name' and optional 'icon'
+{% endcomment %}
+
+{% with current_step_0_indexed=current_step|default:1|add:"-1" total_steps=steps|length %}
+    {% if total_steps > 0 %}
+        {% widthratio current_step_0_indexed total_steps 100 as progress_percentage %}
+        <div class="progress mb-4" style="height: 4px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                 role="progressbar"
+                 style="width: {{ progress_percentage }}%;"
+                 aria-valuenow="{{ progress_percentage }}"
+                 aria-valuemin="0" aria-valuemax="100">
+            </div>
+        </div>
+    {% endif %}
+{% endwith %}
+
+<div class="d-flex justify-content-between mb-4 text-center flex-wrap">
+    {% for step in steps %}
+        <div class="step-indicator text-center {% if forloop.counter == current_step %}active{% elif forloop.counter < current_step %}completed{% endif %}" id="step{{ forloop.counter }}">
+            <div class="step-icon d-flex align-items-center justify-content-center mx-auto mb-2 rounded-circle
+                {% if forloop.counter == current_step %}
+                    bg-primary text-white
+                {% elif forloop.counter < current_step %}
+                    bg-success text-white
+                {% else %}
+                    bg-light text-muted
+                {% endif %}"
+                style="width: 40px; height: 40px; font-size: 1.2rem;">
+                <i class="bi bi-{{ step.icon|default:'circle' }}"></i>
+            </div>
+            <small class="d-block">{{ step.name }}</small>
+        </div>
+    {% endfor %}
+</div>

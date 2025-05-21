@@ -1,4 +1,3 @@
-from django.db import models
 from mongoengine import Document, StringField, ReferenceField, DateTimeField
 from datetime import datetime
 

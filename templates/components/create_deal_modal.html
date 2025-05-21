@@ -1,0 +1,93 @@
+{% comment %}
+Create Deal Modal Component - Reusable modal for creating new deals
+Parameters:
+- supervisors: List of supervisor users available for assignment
+- today: Current date for default values
+{% endcomment %}
+
+<div class="modal fade" id="createDealModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-briefcase me-2"></i> Create New Deal
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Form Progress Indicator -->
+                {% with current_step=1 %}
+                {% with steps=form_steps|default:"[{'name': 'Deal Information', 'icon': '1'}, {'name': 'Financial Details', 'icon': '2'}, {'name': 'Project Setup', 'icon': '3'}]" %}
+                {% include 'components/form_progress.html' %}
+                {% endwith %}
+                {% endwith %}
+                
+                <form id="createDealForm" method="post" action="/api/deals/create/" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" name="created_by" value="{{ username }}">
+                    <input type="hidden" id="projects_data" name="projects_data" value="[]">
+                    <input type="hidden" id="current_step" value="1">
+                    <input type="hidden" id="deal_status" name="status" value="draft">
+                    
+                    <!-- Form Sections Container -->
+                    <div id="formSections">
+                        <!-- Deal Information Section -->
+                        <div class="form-section" id="section1">
+                            {% include 'components/deal_info_form.html' with today=today %}
+                            
+                            <!-- Next Button -->
+                            <div class="d-flex justify-content-end mt-4">
+                                <button type="button" class="btn btn-primary px-4" onclick="nextFormStep(1)">
+                                    Financial Details <i class="bi bi-arrow-right ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Financial Information Section -->
+                        <div class="form-section" id="section2" style="display: none;">
+                            {% include 'components/financial_info_form.html' %}
+                            
+                            <!-- Next Button -->
+                            <div class="d-flex justify-content-end mt-4">
+                                <button type="button" class="btn btn-primary px-4" onclick="nextFormStep(2)">
+                                    Project Setup <i class="bi bi-arrow-right ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Project Configuration Section -->
+                        <div class="form-section" id="section3" style="display: none;">
+                            {% include 'components/project_setup_form.html' with supervisors=supervisors %}
+                            
+                            <!-- Project Form -->
+                            {% include 'components/project_form.html' with supervisors=supervisors %}
+                            
+                            <div class="mb-3">
+                                <label for="receipt" class="form-label">Receipt Upload</label>
+                                <div class="input-group mb-1">
+                                    <span class="input-group-text bg-light"><i class="bi bi-cloud-upload"></i></span>
+                                    <input type="file" class="form-control" id="receipt" name="receipt">
+                                </div>
+                                <div class="form-text">Upload payment receipt (PDF or image)</div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="prevStepBtn" onclick="prevFormStep()" style="display: none;">
+                    <i class="bi bi-arrow-left me-2"></i> Previous
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <div id="dealActionButtons" style="display: none;">
+                    <button type="button" class="btn btn-info me-2" id="saveDraftBtn" onclick="saveDealAsDraft()">
+                        <i class="bi bi-save me-2"></i> Save as Draft
+                    </button>
+                    <button type="button" class="btn btn-primary" id="submitDealBtn" onclick="submitDealForVerification()">
+                        <i class="bi bi-check-circle me-2"></i> Submit for Verification
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

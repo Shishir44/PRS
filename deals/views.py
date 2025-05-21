@@ -1,7 +1,7 @@
-from django.shortcuts import render
 from deals.models import Deal
 from projects.models import Project
 from users.models import User
+from clients.models import Client
 from notifications.models import Notification
 from mongoengine.errors import ValidationError, DoesNotExist
 from django.http import JsonResponse
@@ -25,9 +25,11 @@ def create_deal(request):
         receipt_file = request.FILES.get('receipt')
         
         # Validate required fields
-        required_fields = ['title', 'client_name', 'contact_info', 'budget', 'created_by']
+        required_fields = ['title', 'client_name', 'contact_info', 'budget', 'created_by', 'initiation_date']
         if not all(field in data for field in required_fields):
-            return JsonResponse({'success': False, 'error': f'Missing required fields: {required_fields}'}, status=400)
+            # Find missing fields for a more informative error message
+            missing = [field for field in required_fields if field not in data]
+            return JsonResponse({'success': False, 'error': f'Missing required fields: {", ".join(missing)}'}, status=400)
         
         # Validate salesperson
         try:
@@ -43,12 +45,73 @@ def create_deal(request):
         
         # Check if it's a multi-project deal
         is_multiproject = data.get('is_multiproject', 'false').lower() == 'true'
+
+        # Handle initiation_date
+        initiation_date_val = None
+        initiation_date_str = data.get('initiation_date')
+        if initiation_date_str:
+            try:
+                initiation_date_val = datetime.strptime(initiation_date_str, '%Y-%m-%d')
+            except ValueError:
+                return JsonResponse({'success': False, 'error': 'Invalid initiation_date format. Use YYYY-MM-DD.'}, status=400)
+        else:
+             # This case should ideally not be hit if form validation (HTML required) works
+            return JsonResponse({'success': False, 'error': 'Initiation date is required.'}, status=400)
+
+        # Robust client linking with proper prioritization
+        client_obj = None
+        client_id = data.get('client_id')  # This should be the primary way to link a client
+        manual_client_name = data.get('client_name_manual')  # Used when creating a new client on-the-fly
+        client_name = data.get('client_name')  # Fallback for display purposes only
+        contact_info = data.get('contact_info')
+
+        # Prioritize client_id if it exists - this means we're using an existing client
+        if client_id:
+            try:
+                client_obj = Client.objects.get(id=client_id)
+                client_name = client_obj.name  # Use the name from the database record
+                
+                # If client has contact info, use that instead unless explicit contact_info provided
+                if client_obj.email and not contact_info:
+                    contact_info = client_obj.email
+                elif client_obj.contact_info and not contact_info:
+                    contact_info = client_obj.contact_info
+                elif client_obj.phone and not contact_info:
+                    contact_info = client_obj.phone
+                    
+                print(f"Using existing client: {client_name} (ID: {client_id})")
+            except Client.DoesNotExist:
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'Selected client not found. Please refresh the client list and try again.'
+                }, status=400)
         
+        # If no client_id but manual_client_name exists, create a new client
+        elif manual_client_name:
+            # Create a new client for this user
+            client_obj = Client(
+                name=manual_client_name,
+                contact_info=contact_info,
+                created_by=salesperson
+            )
+            client_obj.save()
+            client_name = manual_client_name
+            print(f"Created new client: {client_name} (ID: {client_obj.id})")
+            
+        # Neither client_id nor manual_client_name - this is an error case
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'No client selected or created. Please select an existing client or enter a new client name.'
+            }, status=400)
+
         # Create deal
         deal = Deal(
             title=data['title'],
-            client_name=data['client_name'],
-            contact_info=data['contact_info'],
+            client_name=client_name,
+            client=client_obj,
+            contact_info=contact_info,
+            initiation_date=initiation_date_val,
             budget=float(data['budget']),
             requirements=data.get('requirements', ''),
             advance_payment=float(data.get('advance_payment', 0)),
@@ -58,48 +121,94 @@ def create_deal(request):
             is_multiproject=is_multiproject
         ).save()
         
-        # Process projects if it's a multi-project deal
+        # Process projects - Every deal should have at least one project
         projects_created = []
-        if is_multiproject and 'projects_data' in data and data['projects_data']:
-            try:
-                projects_data = json.loads(data['projects_data'])
-                
-                # Create projects for this deal
-                for project_data in projects_data:
-                    project = Project(
-                        deal_id=str(deal.id),
-                        name=project_data.get('name', ''),
-                        supervisor=project_data.get('supervisor', ''),
-                        description=project_data.get('description', ''),
-                        deadline=datetime.strptime(project_data.get('deadline', ''), '%Y-%m-%d') if project_data.get('deadline') else None,
-                        status='pending'
-                    ).save()
-                    
-                    projects_created.append({
-                        'id': str(project.id),
-                        'name': project.name,
-                        'supervisor': project.supervisor
-                    })
-                    
-                    # Notify supervisor
-                    try:
-                        Notification(
-                            user=project.supervisor,
-                            title=f"New Project Assignment: {project.name}",
-                            message=f"You've been assigned to a new project: {project.name} for deal {deal.title}.",
-                            link=f"/dashboard/supervisor/"
-                        ).save()
-                    except Exception as e:
-                        print(f"Failed to create notification: {e}")
-            except json.JSONDecodeError:
-                # Log the error but don't fail the deal creation
-                print("Error decoding projects data")
+        projects_errors = []
+        projects_data = []
         
+        # Attempt to get projects data from form
+        try:
+            if 'projects_data' in data and data['projects_data']:
+                projects_data = json.loads(data['projects_data'])
+        except json.JSONDecodeError as e:
+            projects_errors.append(f"Invalid project data format: {str(e)}")
+            projects_data = []
+        
+        # Require at least one project for any deal type
+        if not projects_data:
+            # Log the error but don't fail the deal creation
+            projects_errors.append("No project data was provided. At least one project is required.")
+        else:
+            # Create projects for this deal
+            for project_data in projects_data:
+                try:
+                    # Check for required fields
+                    if not project_data.get('name') or not project_data.get('supervisor') or not project_data.get('deadline'):
+                        projects_errors.append(f"Missing required fields (name, supervisor, deadline) for project: {project_data.get('name', 'Unnamed')}")
+                        continue
+                    
+                    # Parse deadline
+                    deadline = None
+                    try:
+                        deadline = datetime.strptime(project_data.get('deadline'), '%Y-%m-%d')
+                    except ValueError:
+                        projects_errors.append(f"Invalid deadline format for project {project_data.get('name')}. Use YYYY-MM-DD.")
+                        continue
+
+                    # Create Project instance
+                    project_instance = Project(
+                        deal=deal,
+                        name=project_data['name'],
+                        description=project_data.get('description', ''),
+                        supervisor=project_data['supervisor'],
+                        assigned_by=salesperson.username,  # Populate assigned_by
+                        deadline=deadline,
+                        status='pending' # Default status
+                    )
+                    project_instance.save()
+                    projects_created.append(str(project_instance.id))
+                    deal.projects.append(project_instance)
+                    
+                    # Notify supervisor of new project assignment
+                    try:
+                        supervisor_username = project_data.get('supervisor')
+                        if supervisor_username:
+                            Notification(
+                                recipient=supervisor_username,
+                                message=f"You have been assigned to project '{project_instance.name}' for deal '{deal.title}'.",
+                                deal_id=str(deal.id),
+                                project_id=str(project_instance.id),
+                                created_at=datetime.utcnow()
+                            ).save()
+                    except Exception as notify_error:
+                        print(f"Error sending notification: {str(notify_error)}")
+                        
+                except Exception as e:
+                    projects_errors.append(f"Error creating project '{project_data.get('name', 'Unnamed')}': {str(e)}")
+        
+        # Log any project creation errors
+        if projects_errors:
+            print("Project creation errors:", projects_errors)
+            
+        # Prepare project info for the response
+        project_list = []
+        for project_id in projects_created:
+            project = Project.objects.get(id=project_id)
+            project_list.append({
+                'id': str(project.id),
+                'name': project.name,
+                'supervisor': project.supervisor,
+                'description': project.description
+            })
+            
+        # Return success response
         return JsonResponse({
             'success': True,
+            'message': 'Deal created successfully!',
             'deal_id': str(deal.id),
             'receipt_path': receipt_path,
-            'projects': projects_created
+            'projects': project_list,
+            'projects_count': len(project_list)
         }, status=201)
         
     except Exception as e:
@@ -169,7 +278,7 @@ def verify_deal(request, deal_id):
 
 @csrf_exempt
 def submit_for_verification(request, deal_id):
-    """Submit a deal for verification."""
+    """Submit a deal for verification and notify relevant parties."""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
     
@@ -178,11 +287,49 @@ def submit_for_verification(request, deal_id):
         if deal.status != 'draft':
             return JsonResponse({'success': False, 'error': 'Only draft deals can be submitted'}, status=400)
         
+        # Get the username of the person submitting the deal
+        username = request.POST.get('username', deal.created_by)
+        
+        # Change status using the model method
         deal.submit_for_verification()
+        
+        # Notify verifiers about the new deal for verification
+        verifiers = User.objects.filter(role='verifier')
+        for verifier in verifiers:
+            try:
+                Notification.objects.create(
+                    recipient=verifier.username,
+                    message=f"New deal '{deal.title}' has been submitted for verification by {username}.",
+                    link=f"/verifier/deals/{deal.id}/",
+                    notification_type="deal_verification"
+                )
+            except Exception as notification_error:
+                print(f"Error creating verifier notification: {notification_error}")
+        
+        # Notify supervisors about projects they've been assigned to
+        try:
+            # Get all projects associated with this deal
+            projects = Project.objects.filter(deal_id=str(deal.id))
+            notified_supervisors = set()  # Track which supervisors we've already notified
+            
+            for project in projects:
+                supervisor = project.supervisor
+                if supervisor and supervisor not in notified_supervisors:
+                    Notification.objects.create(
+                        recipient=supervisor,
+                        message=f"You've been assigned as supervisor for project '{project.name}' in deal '{deal.title}'.",
+                        link=f"/supervisor/projects/{project.id}/",
+                        notification_type="project_assignment"
+                    )
+                    notified_supervisors.add(supervisor)
+        except Exception as project_notification_error:
+            # Log the error but don't fail the API call
+            print(f"Error sending project notifications: {project_notification_error}")
+        
         return JsonResponse({
             'success': True,
             'status': deal.status,
-            'message': 'Deal submitted for verification'
+            'message': 'Deal submitted for verification. Verifiers and supervisors have been notified.'
         })
         
     except Deal.DoesNotExist:
@@ -234,7 +381,8 @@ def list_deals(request):
             'is_multiproject': d.is_multiproject,
             'verified_by': d.verified_by,
             'verified_at': d.verified_at.isoformat() if d.verified_at else None,
-            'rejection_reason': d.rejection_reason
+            'rejection_reason': d.rejection_reason,
+            'initiation_date': d.initiation_date.isoformat() if d.initiation_date else None
         } for d in deals]
         
         return JsonResponse({
@@ -333,7 +481,20 @@ def update_deal(request, deal_id):
         deal.advance_payment = float(request.POST.get('advance_payment', deal.advance_payment or 0))
         deal.description = request.POST.get('description', deal.description or '')
         deal.is_multiproject = request.POST.get('is_multiproject', '').lower() == 'true'
-        
+
+        # Handle initiation_date update
+        initiation_date_str = request.POST.get('initiation_date')
+        if initiation_date_str:
+            try:
+                deal.initiation_date = datetime.strptime(initiation_date_str, '%Y-%m-%d')
+            except ValueError:
+                return JsonResponse({'success': False, 'error': 'Invalid initiation_date format. Use YYYY-MM-DD.'}, status=400)
+        elif 'initiation_date' in request.POST and not initiation_date_str:
+            # If field is explicitly sent as empty, and model allows null (which DateTimeField does by default)
+            # However, our form input is 'required', so this path is less likely unless JS modifies it.
+            # If it must always have a value, this should be an error.
+            return JsonResponse({'success': False, 'error': 'Initiation date cannot be empty if provided.'}, status=400)
+
         # Handle status setting (usually back to draft after edits)
         if 'status' in request.POST:
             requested_status = request.POST.get('status')

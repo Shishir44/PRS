@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Client Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary bg-opacity-10 d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="bi bi-people-fill me-2"></i>Client Management</h4>
+                    <button class="btn btn-success" id="showAddClientForm">
+                        <i class="bi bi-plus-circle me-1"></i> Add New Client
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs" id="clientTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="clients-list-tab" data-bs-toggle="tab" data-bs-target="#clients-list" type="button" role="tab" aria-controls="clients-list" aria-selected="true">
+                                <i class="bi bi-list-ul me-1"></i> Your Clients
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="add-client-tab" data-bs-toggle="tab" data-bs-target="#add-client" type="button" role="tab" aria-controls="add-client" aria-selected="false">
+                                <i class="bi bi-plus-circle me-1"></i> Add New Client
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content p-3" id="clientTabContent">
+                        <!-- Clients List Tab -->
+                        <div class="tab-pane fade show active" id="clients-list" role="tabpanel" aria-labelledby="clients-list-tab">
+                            <div class="mb-3">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                                    <input type="text" class="form-control" id="clientSearchInput" placeholder="Search clients by name, company, or contact info..." onkeyup="searchClients()">
+                                </div>
+                            </div>
+                            <div id="clientsTableContainer" class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Company</th>
+                                            <th>Contact Info</th>
+                                            <th>City/Location</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="clientList">
+                                        <!-- Clients will be loaded here -->
+                                        <tr>
+                                            <td colspan="5" class="text-center">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                                <p class="mt-2">Loading clients...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="noClientsMessage" class="alert alert-info d-none">
+                                <i class="bi bi-info-circle me-2"></i> You haven't added any clients yet. Click the "Add New Client" button to get started.
+                            </div>
+                        </div>
+
+                        <!-- Add Client Tab -->
+                        <div class="tab-pane fade" id="add-client" role="tabpanel" aria-labelledby="add-client-tab">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <form id="addClientForm" class="needs-validation" action="javascript:void(0);" data-username="{{ request.session.username }}" novalidate>
+                                        <h5 class="mb-3 border-bottom pb-2">Basic Information</h5>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="clientName" class="form-label">Contact Person <span class="text-danger">*</span></label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                                                    <input type="text" class="form-control" id="clientName" name="clientName" required>
+                                                </div>
+                                                <div class="invalid-feedback">Please provide a contact name.</div>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="companyName" class="form-label">Company Name</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light"><i class="bi bi-building"></i></span>
+                                                    <input type="text" class="form-control" id="companyName" name="companyName">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <h5 class="mt-4 mb-3 border-bottom pb-2">Contact Details</h5>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="clientEmail" class="form-label">Email</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light"><i class="bi bi-envelope"></i></span>
+                                                    <input type="email" class="form-control" id="clientEmail" name="clientEmail">
+                                                </div>
+                                                <div class="invalid-feedback">Please provide a valid email address.</div>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="clientPhone" class="form-label">Phone</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light"><i class="bi bi-telephone"></i></span>
+                                                    <input type="text" class="form-control" id="clientPhone" name="clientPhone">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="clientAddress" class="form-label">Street Address</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light"><i class="bi bi-geo-alt"></i></span>
+                                                <input type="text" class="form-control" id="clientAddress" name="clientAddress">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="clientCity" class="form-label">City</label>
+                                                <input type="text" class="form-control" id="clientCity" name="clientCity">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="clientState" class="form-label">State/Province</label>
+                                                <input type="text" class="form-control" id="clientState" name="clientState">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="clientCountry" class="form-label">Country</label>
+                                                <input type="text" class="form-control" id="clientCountry" name="clientCountry">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="clientPostalCode" class="form-label">Postal Code</label>
+                                                <input type="text" class="form-control" id="clientPostalCode" name="clientPostalCode">
+                                            </div>
+                                        </div>
+
+                                        <h5 class="mt-4 mb-3 border-bottom pb-2">Additional Information</h5>
+                                        <div class="mb-3">
+                                            <label for="clientWebsite" class="form-label">Website</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light"><i class="bi bi-globe"></i></span>
+                                                <input type="url" class="form-control" id="clientWebsite" name="clientWebsite" placeholder="https://">
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="clientNotes" class="form-label">Notes</label>
+                                            <textarea class="form-control" id="clientNotes" name="clientNotes" rows="3" placeholder="Additional details about this client..."></textarea>
+                                        </div>
+
+                                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                                            <button type="reset" class="btn btn-secondary me-md-2">
+                                                <i class="bi bi-x-circle me-1"></i> Clear Form
+                                            </button>
+                                            <button type="submit" class="btn btn-success" id="submitClientBtn">
+                                                <i class="bi bi-plus-circle me-1"></i> Add Client
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Client Modal -->
+<div class="modal fade" id="editClientModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i> Edit Client</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editClientForm" class="needs-validation" novalidate>
+                    <input type="hidden" id="editClientId">
+                    <!-- Form fields will be the same as Add Client form but with different IDs -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editClientName" class="form-label">Contact Person <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control" id="editClientName" name="editClientName" required>
+                            </div>
+                            <div class="invalid-feedback">Please provide a contact name.</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editCompanyName" class="form-label">Company Name</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-building"></i></span>
+                                <input type="text" class="form-control" id="editCompanyName" name="editCompanyName">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mt-4 mb-3 border-bottom pb-2">Contact Details</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editClientEmail" class="form-label">Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-envelope"></i></span>
+                                <input type="email" class="form-control" id="editClientEmail" name="editClientEmail">
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editClientPhone" class="form-label">Phone</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-telephone"></i></span>
+                                <input type="text" class="form-control" id="editClientPhone" name="editClientPhone">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- More fields similar to add client form but with edit prefix -->
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <button type="button" class="btn btn-secondary me-md-2" data-bs-dismiss="modal">
+                            <i class="bi bi-x-circle me-1"></i> Cancel
+                        </button>
+                        <button type="button" class="btn btn-primary" id="updateClientBtn" onclick="updateClient()">
+                            <i class="bi bi-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Client Details Modal -->
+<div class="modal fade" id="clientDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-info-circle me-2"></i> Client Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="clientDetailsContent">
+                <!-- Client details will be dynamically loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="editClientBtn">
+                    <i class="bi bi-pencil-square me-1"></i> Edit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize currentUsername from Django session
+    window.currentUsername = "{{ request.session.username }}";
+    console.log('Initializing client manager with username:', window.currentUsername);
+</script>
+<script src="{% static 'js/client-manager.js' %}"></script>
+{% endblock %}

@@ -345,9 +345,11 @@
                         <div class="col-md-6">
                             <p class="mb-1"><strong>Created:</strong> ${createdDate.toLocaleString()}</p>
                             <p class="mb-1"><strong>Last Updated:</strong> ${updatedDate.toLocaleString()}</p>
+                            <p class="mb-1"><strong>Assigned By:</strong> <span class="badge bg-secondary">${project.assigned_by || project.deal?.created_by || 'Unknown'}</span></p>
                         </div>
                         <div class="col-md-6">
                             <p class="mb-1"><strong>Deadline:</strong> ${deadline ? deadline.toLocaleDateString() : 'No deadline set'}</p>
+                            <p class="mb-1"><strong>Deal:</strong> ${project.deal?.title || 'N/A'}</p>
                         </div>
                     </div>
                 </div>

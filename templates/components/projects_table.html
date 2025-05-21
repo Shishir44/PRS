@@ -1,0 +1,107 @@
+{% comment %}
+Projects Table Component - Reusable projects list display
+Parameters:
+- projects: List of projects to display
+{% endcomment %}
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-light">
+        <h6 class="m-0 fw-bold text-primary">My Projects</h6>
+        <div class="d-flex gap-2">
+            <div class="btn-group">
+                <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="projectFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-funnel me-1"></i> Filter Projects
+                </button>
+                <ul class="dropdown-menu shadow-sm" aria-labelledby="projectFilterDropdown">
+                    <li><a class="dropdown-item" href="#" onclick="filterProjects('all')"><i class="bi bi-grid-3x3 me-2"></i>All Projects</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="filterProjects('active')"><i class="bi bi-play-circle me-2 text-success"></i>Active</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="filterProjects('completed')"><i class="bi bi-check-circle me-2 text-primary"></i>Completed</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="filterProjects('pending')"><i class="bi bi-hourglass me-2 text-warning"></i>Pending</a></li>
+                </ul>
+            </div>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control" id="projectSearchInput" placeholder="Search projects..." oninput="searchProjects(this.value)">
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if projects %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" id="projectsTable">
+                <thead>
+                    <tr>
+                        <th>Project Name</th>
+                        <th>Deal</th>
+                        <th>Supervisor</th>
+                        <th>Status</th>
+                        <th>Deadline</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="projectsTableBody">
+                    {% for project in projects %}
+                    <tr class="project-row" data-status="{{ project.status }}">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="icon-square bg-light text-dark flex-shrink-0 me-3">
+                                    <i class="bi bi-folder"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">{{ project.name }}</h6>
+                                    <small class="text-muted">Created: {{ project.created_at|date:"M d, Y" }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ project.deal_title }}</td>
+                        <td>{{ project.supervisor }}</td>
+                        <td>
+                            {% if project.status == 'active' %}
+                            <span class="badge bg-success">Active</span>
+                            {% elif project.status == 'completed' %}
+                            <span class="badge bg-primary">Completed</span>
+                            {% elif project.status == 'pending' %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                            {% else %}
+                            <span class="badge bg-info">{{ project.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ project.deadline|date:"M d, Y" }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-info" onclick="viewProjectDetails('{{ project.id }}')">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="viewProjectFiles('{{ project.id }}')">
+                                    <i class="bi bi-folder"></i>
+                                </button>
+                                {% if project.status != 'completed' %}
+                                <button type="button" class="btn btn-sm btn-success" onclick="markProjectComplete('{{ project.id }}')">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <div class="d-flex">
+                <div class="me-3">
+                    <i class="bi bi-info-circle-fill fs-3"></i>
+                </div>
+                <div>
+                    <h5 class="alert-heading">No projects found</h5>
+                    <p class="mb-0">Projects will appear here once they are assigned to you. Projects are typically created after a deal is verified.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>

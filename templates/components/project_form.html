@@ -1,0 +1,107 @@
+{% comment %}
+Project Form Component - Reusable form for adding a project
+Parameters:
+- supervisors: List of supervisor users available to assign
+- project: Project object with data (optional, for edit forms)
+{% endcomment %}
+
+<div id="addProjectForm" class="mt-4 d-none">
+    <!-- Project Basic Information -->
+    <div class="card mb-3">
+        <div class="card-header bg-primary bg-opacity-10">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Project Basic Information</h6>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAddProjectForm(false)">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="new_project_name" class="form-label">Project Name</label>
+                    <div class="input-group mb-1">
+                        <span class="input-group-text bg-light"><i class="bi bi-tag"></i></span>
+                        <input type="text" class="form-control" id="new_project_name" name="new_project_name" 
+                               placeholder="Enter project name" data-required="true"
+                               value="{{ project.name|default:'' }}">
+                    </div>
+                    <div class="form-text">A descriptive name for this project</div>
+                </div>
+                <div class="col-md-6">
+                    <label for="new_project_supervisor" class="form-label">Assign Supervisor</label>
+                    <div class="input-group mb-1">
+                        <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                        <select class="form-select" id="new_project_supervisor" name="new_project_supervisor" data-required="true">
+                            <option value="">Select a supervisor</option>
+                            {% for supervisor in supervisors %}
+                            <option value="{{ supervisor.username }}" {% if project.supervisor == supervisor.username %}selected{% endif %}>
+                                {{ supervisor.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-text">Select a supervisor for this project</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Project Timeline and Requirements -->
+    <div class="card mb-3">
+        <div class="card-header bg-success bg-opacity-10">
+            <h6 class="mb-0">Timeline and Requirements</h6>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="new_project_deadline" class="form-label">Project Deadline</label>
+                    <div class="input-group mb-1">
+                        <span class="input-group-text bg-light"><i class="bi bi-calendar-date"></i></span>
+                        <input type="date" class="form-control" id="new_project_deadline" name="new_project_deadline" 
+                               data-required="true" value="{{ project.deadline|default:''|date:'Y-m-d' }}">
+                    </div>
+                    <div class="form-text">When is this project due?</div>
+                </div>
+                <div class="col-12">
+                    <label for="new_project_description" class="form-label">Project Requirements</label>
+                    <div class="input-group mb-1">
+                        <span class="input-group-text bg-light"><i class="bi bi-file-text"></i></span>
+                        <textarea class="form-control" id="new_project_description" name="new_project_description" rows="3" 
+                                  placeholder="Detailed project requirements and description">{{ project.description|default:'' }}</textarea>
+                    </div>
+                    <div class="form-text">Additional project details or requirements</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Project Files -->
+    <div class="card mb-3">
+        <div class="card-header bg-info bg-opacity-10">
+            <h6 class="mb-0">Project Files</h6>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="new_project_files" class="form-label">Upload Files</label>
+                <div class="input-group mb-1">
+                    <span class="input-group-text bg-light"><i class="bi bi-cloud-upload"></i></span>
+                    <input type="file" class="form-control" id="new_project_files" name="new_project_files" multiple>
+                </div>
+                <div class="form-text">
+                    <i class="bi bi-info-circle"></i> You can upload multiple files. Supported formats: PDF, DOC, DOCX, images, and ZIP files.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mb-3">
+        <button type="button" class="btn btn-secondary" onclick="toggleAddProjectForm(false)">
+            <i class="bi bi-x-circle"></i> Cancel
+        </button>
+        <button type="button" class="btn btn-primary" onclick="addProjectToList()">
+            <i class="bi bi-plus-circle"></i> Add Project
+        </button>
+    </div>
+</div>

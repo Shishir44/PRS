@@ -1,0 +1,45 @@
+{% comment %}
+Financial Information Form Component - Reusable financial details section
+Parameters:
+- deal: Deal object with data (optional, for edit forms)
+{% endcomment %}
+
+<div class="card mb-4 border-success">
+    <div class="card-header bg-success bg-opacity-10 d-flex align-items-center">
+        <div class="rounded-circle bg-success text-white p-2 me-2" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+            <i class="bi bi-cash"></i>
+        </div>
+        <h6 class="mb-0">Financial Details</h6>
+    </div>
+    <div class="card-body p-4">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="budget" class="form-label">Total Budget ($) <span class="text-danger">*</span></label>
+                <div class="input-group mb-1">
+                    <span class="input-group-text bg-light"><i class="bi bi-currency-dollar"></i></span>
+                    <input type="number" class="form-control" id="budget" name="budget" step="0.01" 
+                           value="{{ deal.budget|default:'0.00' }}" required>
+                </div>
+                <div class="form-text">Total budget for this deal</div>
+            </div>
+            <div class="col-md-6">
+                <label for="advance_payment" class="form-label">Advance Payment ($)</label>
+                <div class="input-group mb-1">
+                    <span class="input-group-text bg-light"><i class="bi bi-currency-dollar"></i></span>
+                    <input type="number" class="form-control" id="advance_payment" name="advance_payment" step="0.01"
+                           value="{{ deal.advance_payment|default:'0.00' }}">
+                </div>
+                <div class="form-text">Any advance payment made for this deal</div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="requirements" class="form-label">Financial Requirements</label>
+            <div class="input-group mb-1">
+                <span class="input-group-text bg-light"><i class="bi bi-file-text"></i></span>
+                <textarea class="form-control" id="requirements" name="requirements" rows="3" 
+                          placeholder="Any specific financial requirements or terms">{{ deal.requirements|default:'' }}</textarea>
+            </div>
+            <div class="form-text">Additional financial details or requirements</div>
+        </div>
+    </div>
+</div>

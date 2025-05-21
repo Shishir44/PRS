@@ -1,0 +1,157 @@
+{% comment %}
+Deal Information Form Component - Reusable deal information section
+Parameters:
+- deal: Deal object with data (optional, for edit forms)
+{% endcomment %}
+
+<div class="card mb-4 border-primary">
+    <div class="card-header bg-primary bg-opacity-10 d-flex align-items-center">
+        <div class="rounded-circle bg-primary text-white p-2 me-2" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+            <i class="bi bi-info-circle"></i>
+        </div>
+        <h6 class="mb-0">Deal Information</h6>
+    </div>
+    <div class="card-body p-4">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="title" class="form-label">Deal Title <span class="text-danger">*</span></label>
+                <div class="input-group mb-1">
+                    <span class="input-group-text bg-light"><i class="bi bi-tag"></i></span>
+                    <input type="text" class="form-control" id="title" name="title" 
+                           placeholder="Enter a descriptive title" 
+                           value="{{ deal.title|default:'' }}" required>
+                </div>
+                <div class="form-text">A clear title helps you find this deal later</div>
+            </div>
+            <div class="col-md-6">
+                <label for="client_name" class="form-label">Client <span class="text-danger">*</span></label>
+                <div class="input-group mb-1">
+                    <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                    <select class="form-select" id="clientSelect" name="client_select" onchange="onClientSelectChange()">
+                        <option value="">-- Select a client --</option>
+                        <!-- Dynamically loaded options -->
+                    </select>
+                    <input type="hidden" id="client_id" name="client_id" />
+                    <button class="btn btn-outline-secondary" type="button" onclick="loadClientsForDeal()" title="Refresh client list"><i class="bi bi-arrow-clockwise"></i></button>
+                </div>
+                <div class="input-group mb-1 mt-2">
+                    <span class="input-group-text bg-light"><i class="bi bi-pencil"></i></span>
+                    <input type="text" class="form-control" id="client_name_manual" name="client_name_manual" placeholder="Or enter a new client name" oninput="onManualClientInput()">
+                </div>
+                <div class="form-text">Select a client from your list, or enter a new client name above.</div>
+                <script>
+                // Populate client dropdown for deal creation
+function loadClientsForDeal() {
+    fetch(`/api/clients/list/?username=${window.currentUsername}`)
+        .then(res => res.json())
+        .then(data => {
+            const select = document.getElementById('clientSelect');
+            if (!select) return;
+            select.innerHTML = '<option value="">-- Select a client --</option>';
+            if (data.success && data.clients.length) {
+                data.clients.forEach(client => {
+                    const opt = document.createElement('option');
+                    opt.value = client.id; // Use client.id for value
+                    // Include company name if available
+                    let displayText = client.name;
+                    if (client.company_name) {
+                        displayText = `${client.company_name} (${client.name})`;
+                    } else if (client.contact_info) {
+                        displayText = `${client.name} (${client.contact_info})`;
+                    }
+                    opt.textContent = displayText;
+                    select.appendChild(opt);
+                });
+            }
+        });
+    // Reset hidden field and manual input
+    document.getElementById('client_id').value = '';
+    document.getElementById('client_name_manual').value = '';
+    document.getElementById('client_name_manual').disabled = false;
+    document.getElementById('clientSelect').disabled = false;
+}
+// Handle selection change
+function onClientSelectChange() {
+    const select = document.getElementById('clientSelect');
+    const manual = document.getElementById('client_name_manual');
+    const hiddenId = document.getElementById('client_id');
+    if (select.value) {
+        hiddenId.value = select.value;
+        manual.value = '';
+        manual.disabled = true;
+        
+        // Also update contact info if needed by fetching client details
+        fetch(`/api/clients/details/${select.value}/?username=${window.currentUsername}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.client) {
+                    // Autofill contact info if it's empty
+                    const contactInfoField = document.getElementById('contact_info');
+                    if (contactInfoField && (!contactInfoField.value || contactInfoField.value === '')) {
+                        if (data.client.email) {
+                            contactInfoField.value = data.client.email;
+                        } else if (data.client.contact_info) {
+                            contactInfoField.value = data.client.contact_info;
+                        } else if (data.client.phone) {
+                            contactInfoField.value = data.client.phone;
+                        }
+                    }
+                }
+            })
+            .catch(err => console.log('Error fetching client details:', err));
+    } else {
+        hiddenId.value = '';
+        manual.disabled = false;
+    }
+}
+// Handle manual input
+function onManualClientInput() {
+    const select = document.getElementById('clientSelect');
+    const manual = document.getElementById('client_name_manual');
+    const hiddenId = document.getElementById('client_id');
+    if (manual.value) {
+        select.selectedIndex = 0;
+        select.disabled = true;
+        hiddenId.value = '';
+    } else {
+        select.disabled = false;
+    }
+}
+// On modal show, load clients
+$('#createDealModal').on('shown.bs.modal', loadClientsForDeal);
+
+                </script>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="initiation_date" class="form-label">Deal Date <span class="text-danger">*</span></label>
+                <div class="input-group mb-1">
+                    <span class="input-group-text bg-light"><i class="bi bi-calendar-date"></i></span>
+                    <input type="date" class="form-control" id="initiation_date" name="initiation_date" 
+                           value="{{ deal.initiation_date|default:today|date:'Y-m-d' }}" required>
+                </div>
+                <div class="form-text">When was this deal initiated?</div>
+            </div>
+            <div class="col-md-6">
+                <label for="contact_info" class="form-label">Client Contact <span class="text-danger">*</span></label>
+                <div class="input-group mb-1">
+                    <span class="input-group-text bg-light"><i class="bi bi-envelope"></i></span>
+                    <input type="text" class="form-control" id="contact_info" name="contact_info" 
+                           placeholder="Email or phone number" 
+                           value="{{ deal.contact_info|default:'' }}" required>
+                </div>
+                <div class="form-text">Best way to reach the client</div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="description" class="form-label">Deal Description</label>
+            <div class="input-group mb-1">
+                <span class="input-group-text bg-light"><i class="bi bi-file-text"></i></span>
+                <textarea class="form-control" id="description" name="description" rows="3" 
+                          placeholder="Include key details about the deal scope, requirements, and any special considerations">{{ deal.description|default:'' }}</textarea>
+            </div>
+            <div class="form-text">A detailed description helps everyone understand the deal better</div>
+        </div>
+    </div>
+</div>

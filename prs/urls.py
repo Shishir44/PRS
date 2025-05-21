@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.urls import path
 from django.contrib import admin
 from django.urls import path, include
 from django.views.decorators.csrf import csrf_exempt
@@ -25,7 +26,7 @@ from projects.views import create_project, list_projects, update_project_status
 from django.http import JsonResponse
 from django.conf import settings
 from django.conf.urls.static import static
-from users.views import home_view, login_view, logout_view, register_view, dashboard_view
+from users.views import home_view, login_view, logout_view, register_view, dashboard_view, client_management_view
 
 def api_home(request):
     """API root view providing endpoint documentation."""
@@ -76,6 +77,7 @@ urlpatterns = [
     path("logout/", logout_view, name="logout"),
     path("register/", register_view, name="register"),
     path("dashboard/", dashboard_view, name="dashboard"),
+    path("clients/", client_management_view, name="client_management"),
     
     # Admin and API routes
     path("admin/", admin.site.urls),
@@ -91,6 +93,8 @@ urlpatterns = [
     path('api/projects/create/', csrf_exempt(create_project), name='create_project'),
     path('api/projects/', list_projects, name='list_projects'),
     path('api/projects/<str:project_id>/update-status/', csrf_exempt(update_project_status), name='update_project_status'),
+    # Client endpoints
+    path('api/clients/', include('clients.urls')),
 ]
 
 # Serve media files in development

@@ -1,0 +1,62 @@
+{% comment %}
+Project Setup Form Component - Reusable project configuration section
+Parameters:
+- deal: Deal object with data (optional, for edit forms)
+- supervisors: List of supervisor users available to assign
+{% endcomment %}
+
+<div class="card mb-4 border-info">
+    <div class="card-header bg-info bg-opacity-10 d-flex align-items-center">
+        <div class="rounded-circle bg-info text-white p-2 me-2" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+            <i class="bi bi-building"></i>
+        </div>
+        <h6 class="mb-0">Project Setup</h6>
+    </div>
+    <div class="card-body p-4">
+        <div class="mb-3">
+            <label class="form-label">Project Type <span class="text-danger">*</span></label>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="is_multiproject" id="single_project" value="false" 
+                       onchange="toggleProjectsSection()" 
+                       {% if deal.is_multiproject == False %}checked{% endif %}>
+                <label class="form-check-label" for="single_project">
+                    <i class="bi bi-file-earmark me-1"></i> Single Project
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="is_multiproject" id="multi_project" value="true" 
+                       onchange="toggleProjectsSection()" 
+                       {% if deal.is_multiproject == True %}checked{% endif %}>
+                <label class="form-check-label" for="multi_project">
+                    <i class="bi bi-files me-1"></i> Multiple Projects
+                </label>
+            </div>
+            <div class="form-text">
+                <i class="bi bi-info-circle me-1"></i> Every deal requires at least one project. Select "Multiple Projects" only if this deal will have more than one project.
+            </div>
+        </div>
+        
+        <!-- Projects Section (initially hidden) -->
+        <div id="projectsSection" class="mt-4 d-none">
+            <div class="card mb-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0" id="projectsSectionTitle">Project Details</h6>
+                </div>
+                <div class="card-body">
+                    <div id="projectsList" class="mb-3">
+                        <!-- Projects will be added here dynamically -->
+                        <div class="alert alert-info">
+                            <p class="mb-0">Add your first project using the button below.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center" id="addProjectButtonContainer">
+                        <button type="button" class="btn btn-primary" onclick="showAddProjectForm()">
+                            <i class="bi bi-plus-circle me-1"></i> Add Project
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,18 @@
+{% comment %}
+Navigation Tabs Component - Reusable navigation tabs for dashboard sections
+Parameters:
+- active_tab: String indicating which tab should be active (deals or projects)
+{% endcomment %}
+
+<ul class="nav nav-tabs nav-fill mb-4 shadow-sm rounded-top">
+    <li class="nav-item">
+        <a class="nav-link {% if active_tab == 'deals' %}active{% endif %} py-3" id="deals-tab" data-bs-toggle="tab" href="#deals-content">
+            <i class="bi bi-briefcase me-2"></i> My Deals
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active_tab == 'projects' %}active{% endif %} py-3" id="projects-tab" data-bs-toggle="tab" href="#projects-content">
+            <i class="bi bi-folder me-2"></i> My Projects
+        </a>
+    </li>
+</ul>

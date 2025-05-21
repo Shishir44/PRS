@@ -1,9 +1,7 @@
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
 from .models import User
 from deals.models import Deal
-import json
-from django.views.decorators.csrf import csrf_exempt
+from clients.models import Client
 
 # Create your views here.
 
@@ -78,6 +76,11 @@ def dashboard_view(request):
         # Get salesperson's deals
         deals = Deal.objects.filter(created_by=username)
         context['deals'] = deals
+        
+        # Get supervisors for project assignment
+        supervisors = User.objects.filter(role='supervisor')
+        context['supervisors'] = supervisors
+        
         return render(request, 'salesperson_dashboard.html', context)
     elif role == 'verifier':
         # Get deals pending verification
@@ -88,3 +91,23 @@ def dashboard_view(request):
         return render(request, 'supervisor_dashboard.html', context)
     else:
         return render(request, 'dashboard.html', context)
+
+def client_management_view(request):
+    """Function to render the client management page."""
+    # Check if user is logged in
+    username = request.session.get('username')
+    role = request.session.get('role')
+    
+    if not username:
+        return redirect('login')
+    
+    # Only salespeople should access client management
+    if role != 'salesperson':
+        return redirect('dashboard')
+    
+    context = {
+        'username': username,
+        'role': role
+    }
+    
+    return render(request, 'client_management.html', context)

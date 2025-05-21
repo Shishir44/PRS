@@ -1,0 +1,695 @@
+{#
+Client Management Modal Component
+Allows sales users to add, edit, and delete their own clients.
+#}
+<div class="modal fade" id="clientManagementModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-person-lines-fill me-2"></i> Client Management</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Tab Navigation -->
+                <ul class="nav nav-tabs mb-4" id="clientManagementTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="client-list-tab" data-bs-toggle="tab" data-bs-target="#client-list-tab-pane" type="button" role="tab" aria-controls="client-list-tab-pane" aria-selected="true">
+                            <i class="bi bi-list-ul me-1"></i> Your Clients
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="add-client-tab" data-bs-toggle="tab" data-bs-target="#add-client-tab-pane" type="button" role="tab" aria-controls="add-client-tab-pane" aria-selected="false">
+                            <i class="bi bi-plus-circle me-1"></i> Add New Client
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content" id="clientManagementTabsContent">
+                    <!-- Client List Tab -->
+                    <div class="tab-pane fade show active" id="client-list-tab-pane" role="tabpanel" aria-labelledby="client-list-tab" tabindex="0">
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="clientSearchInput" placeholder="Search clients..." onkeyup="searchClients()">
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Company</th>
+                                        <th>Contact</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clientList">
+                                    <!-- Client items will be loaded here -->
+                                    <tr>
+                                        <td colspan="4" class="text-center">Loading clients...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Add Client Tab -->
+                    <div class="tab-pane fade" id="add-client-tab-pane" role="tabpanel" aria-labelledby="add-client-tab" tabindex="0">
+                        <form id="addClientForm" class="needs-validation" onsubmit="return addClient(event)" novalidate>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="clientName" class="form-label">Contact Person <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="clientName" name="clientName" required>
+                                    <div class="invalid-feedback">Please provide a contact name.</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="companyName" class="form-label">Company Name</label>
+                                    <input type="text" class="form-control" id="companyName" name="companyName">
+                                </div>
+                            </div>
+
+                            <!-- Contact Details Section -->
+                            <h6 class="mt-4 mb-3 border-bottom pb-2">Contact Details</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="clientEmail" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="clientEmail" name="clientEmail">
+                                    <div class="invalid-feedback">Please provide a valid email address.</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="clientPhone" class="form-label">Phone</label>
+                                    <input type="tel" class="form-control" id="clientPhone" name="clientPhone">
+                                </div>
+                            </div>
+
+                            <!-- Address Section -->
+                            <h6 class="mt-4 mb-3 border-bottom pb-2">Address Information</h6>
+                            <div class="mb-3">
+                                <label for="clientAddress" class="form-label">Street Address</label>
+                                <input type="text" class="form-control" id="clientAddress" name="clientAddress">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="clientCity" class="form-label">City</label>
+                                    <input type="text" class="form-control" id="clientCity" name="clientCity">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="clientState" class="form-label">State/Province</label>
+                                    <input type="text" class="form-control" id="clientState" name="clientState">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="clientCountry" class="form-label">Country</label>
+                                    <input type="text" class="form-control" id="clientCountry" name="clientCountry">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="clientPostalCode" class="form-label">Postal/ZIP Code</label>
+                                    <input type="text" class="form-control" id="clientPostalCode" name="clientPostalCode">
+                                </div>
+                            </div>
+
+                            <!-- Website Section -->
+                            <h6 class="mt-4 mb-3 border-bottom pb-2">Online Presence</h6>
+                            <div class="mb-3">
+                                <label for="clientWebsite" class="form-label">Website</label>
+                                <input type="url" class="form-control" id="clientWebsite" name="clientWebsite" placeholder="https://">
+                                <div class="invalid-feedback">Please enter a valid URL.</div>
+                            </div>
+
+                            <!-- Notes Section -->
+                            <div class="mb-3">
+                                <label for="clientNotes" class="form-label">Notes</label>
+                                <textarea class="form-control" id="clientNotes" name="clientNotes" rows="2"></textarea>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="reset" class="btn btn-secondary me-md-2">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Form
+                                </button>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-plus-circle me-1"></i> Add Client
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Hidden Edit Form (will be shown in a modal) -->
+                <div class="modal fade" id="editClientModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning">
+                                <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i> Edit Client</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="editClientForm" class="needs-validation" novalidate>
+                                    <input type="hidden" id="editClientId">
+                                    <!-- Same fields as add form -->
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="editClientName" class="form-label">Contact Person <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="editClientName" name="editClientName" required>
+                                            <div class="invalid-feedback">Please provide a contact name.</div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="editCompanyName" class="form-label">Company Name</label>
+                                            <input type="text" class="form-control" id="editCompanyName" name="editCompanyName">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="editClientEmail" class="form-label">Email</label>
+                                            <input type="email" class="form-control" id="editClientEmail" name="editClientEmail">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="editClientPhone" class="form-label">Phone</label>
+                                            <input type="tel" class="form-control" id="editClientPhone" name="editClientPhone">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editClientAddress" class="form-label">Street Address</label>
+                                        <input type="text" class="form-control" id="editClientAddress" name="editClientAddress">
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="editClientCity" class="form-label">City</label>
+                                            <input type="text" class="form-control" id="editClientCity" name="editClientCity">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="editClientState" class="form-label">State/Province</label>
+                                            <input type="text" class="form-control" id="editClientState" name="editClientState">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="editClientCountry" class="form-label">Country</label>
+                                            <input type="text" class="form-control" id="editClientCountry" name="editClientCountry">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="editClientPostalCode" class="form-label">Postal/ZIP Code</label>
+                                            <input type="text" class="form-control" id="editClientPostalCode" name="editClientPostalCode">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editClientWebsite" class="form-label">Website</label>
+                                        <input type="url" class="form-control" id="editClientWebsite" name="editClientWebsite" placeholder="https://">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editClientNotes" class="form-label">Notes</label>
+                                        <textarea class="form-control" id="editClientNotes" name="editClientNotes" rows="2"></textarea>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="bi bi-x-circle me-1"></i> Cancel
+                                </button>
+                                <button type="button" class="btn btn-warning" onclick="saveClientChanges()">
+                                    <i class="bi bi-save me-1"></i> Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+/**
+ * Function to load clients from the server and populate the client list
+ */
+function loadClients() {
+    // Show loading status
+    const clientList = document.getElementById('clientList');
+    clientList.innerHTML = '<tr><td colspan="4" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>';
+    
+    // Fetch clients data
+    fetch(`/api/clients/list/?username=${window.currentUsername}`)
+        .then(res => res.json())
+        .then(data => {
+            clientList.innerHTML = '';
+            
+            if (data.success && data.clients && data.clients.length > 0) {
+                // Populate the table with client data
+                data.clients.forEach(client => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${client.name || '-'}</td>
+                        <td>${client.company_name || '-'}</td>
+                        <td>${client.contact_info || client.email || client.phone || '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info me-1" title="View Details" onclick="viewClientDetails('${client.id}')"><i class="bi bi-eye"></i></button>
+                            <button class="btn btn-sm btn-warning me-1" title="Edit Client" onclick="editClient('${client.id}')"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-danger" title="Delete Client" onclick="deleteClient('${client.id}')"><i class="bi bi-trash"></i></button>
+                        </td>
+                    `;
+                    tr.setAttribute('data-client-id', client.id);
+                    tr.setAttribute('data-search-content', `${client.name || ''} ${client.company_name || ''} ${client.contact_info || ''} ${client.email || ''} ${client.phone || ''} ${client.address || ''} ${client.city || ''} ${client.country || ''}`); 
+                    clientList.appendChild(tr);
+                });
+            } else {
+                // No clients found
+                clientList.innerHTML = '<tr><td colspan="4" class="text-center">No clients found. Add your first client using the "Add New Client" tab.</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error("Error loading clients:", error);
+            clientList.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading clients. Please try again.</td></tr>';
+        });
+}
+
+/**
+ * Function to filter clients based on search input
+ */
+function searchClients() {
+    const input = document.getElementById('clientSearchInput');
+    const filter = input.value.toLowerCase();
+    const rows = document.querySelectorAll('#clientList tr[data-client-id]');
+    
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        const searchContent = row.getAttribute('data-search-content').toLowerCase();
+        if (searchContent.includes(filter)) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Show no results message if needed
+    if (visibleCount === 0 && rows.length > 0) {
+        // Check if we already have a no-results row
+        let noResultsRow = document.querySelector('#clientList tr.no-results');
+        if (!noResultsRow) {
+            noResultsRow = document.createElement('tr');
+            noResultsRow.className = 'no-results';
+            noResultsRow.innerHTML = `<td colspan="4" class="text-center">No clients match your search.</td>`;
+            document.getElementById('clientList').appendChild(noResultsRow);
+        } else {
+            noResultsRow.style.display = '';
+        }
+    } else {
+        // Hide no-results row if it exists
+        const noResultsRow = document.querySelector('#clientList tr.no-results');
+        if (noResultsRow) {
+            noResultsRow.style.display = 'none';
+        }
+    }
+}
+
+/**
+ * Function to add a new client
+ * @param {Event} event - The form submission event
+ */
+function addClient(event) {
+    event.preventDefault();
+    const form = document.getElementById('addClientForm');
+    
+    // Form validation
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return false;
+    }
+    
+    // Collect form data
+    const clientData = {
+        name: document.getElementById('clientName').value,
+        company_name: document.getElementById('companyName').value,
+        email: document.getElementById('clientEmail').value,
+        phone: document.getElementById('clientPhone').value,
+        address: document.getElementById('clientAddress').value,
+        city: document.getElementById('clientCity').value,
+        state: document.getElementById('clientState').value,
+        country: document.getElementById('clientCountry').value,
+        postal_code: document.getElementById('clientPostalCode').value,
+        website: document.getElementById('clientWebsite').value,
+        notes: document.getElementById('clientNotes').value,
+        // Set contact_info (for backward compatibility)
+        contact_info: document.getElementById('clientPhone').value || document.getElementById('clientEmail').value,
+        username: window.currentUsername
+    };
+    
+    // Disable the submit button to prevent multiple submissions
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Adding...';
+    submitBtn.disabled = true;
+    
+    // Submit the data
+    fetch('/api/clients/create/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(clientData)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Reset form and show success message
+            form.reset();
+            form.classList.remove('was-validated');
+            
+            // Switch to client list tab and refresh client list
+            document.getElementById('client-list-tab').click();
+            loadClients();
+            
+            // Show success toast
+            showToast('Success!', 'Client added successfully.', 'success');
+        } else {
+            // Show error message
+            alert('Failed to add client: ' + (data.error || 'Unknown error'));
+        }
+        
+        // Reset button state
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+    })
+    .catch(error => {
+        console.error("Error adding client:", error);
+        alert('An error occurred while adding the client. Please try again.');
+        
+        // Reset button state
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+    });
+    
+    return false;
+}
+
+/**
+ * Function to delete a client
+ * @param {string} clientId - The ID of the client to delete
+ */
+function deleteClient(clientId) {
+    if (!confirm('Are you sure you want to delete this client? This action cannot be undone.')) {
+        return;
+    }
+    
+    fetch(`/api/clients/delete/${clientId}/`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username: window.currentUsername})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            loadClients();
+            showToast('Success!', 'Client deleted successfully.', 'success');
+        } else {
+            alert('Failed to delete client: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error("Error deleting client:", error);
+        alert('An error occurred while deleting the client. Please try again.');
+    });
+}
+
+/**
+ * Function to view detailed client information
+ * @param {string} clientId - The ID of the client to view
+ */
+function viewClientDetails(clientId) {
+    // Fetch client details
+    fetch(`/api/clients/details/${clientId}/?username=${window.currentUsername}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.client) {
+                // Format the client details for display
+                const client = data.client;
+                const detailsHtml = `
+                    <div class="card mb-0">
+                        <div class="card-header bg-info bg-opacity-10">
+                            <h5 class="mb-0">${client.name}</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Company:</strong> ${client.company_name || 'N/A'}</p>
+                                    <p><strong>Email:</strong> ${client.email || 'N/A'}</p>
+                                    <p><strong>Phone:</strong> ${client.phone || 'N/A'}</p>
+                                    <p><strong>Website:</strong> ${client.website ? `<a href="${client.website}" target="_blank">${client.website}</a>` : 'N/A'}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Address:</strong> ${client.address || 'N/A'}</p>
+                                    <p><strong>City:</strong> ${client.city || 'N/A'}</p>
+                                    <p><strong>State/Province:</strong> ${client.state || 'N/A'}</p>
+                                    <p><strong>Country:</strong> ${client.country || 'N/A'}</p>
+                                    <p><strong>Postal Code:</strong> ${client.postal_code || 'N/A'}</p>
+                                </div>
+                            </div>
+                            ${client.notes ? `<div class="mt-3"><strong>Notes:</strong><p>${client.notes}</p></div>` : ''}
+                        </div>
+                        <div class="card-footer bg-light d-flex justify-content-between">
+                            <small class="text-muted">Created: ${formatDate(client.created_at)}</small>
+                            <small class="text-muted">Last Updated: ${formatDate(client.updated_at)}</small>
+                        </div>
+                    </div>
+                `;
+                
+                // Show the details in a modal
+                showModal('Client Details', detailsHtml);
+            } else {
+                alert('Failed to load client details: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error("Error loading client details:", error);
+            alert('An error occurred while loading client details. Please try again.');
+        });
+}
+
+/**
+ * Function to edit a client
+ * @param {string} clientId - The ID of the client to edit
+ */
+function editClient(clientId) {
+    // Fetch client details first
+    fetch(`/api/clients/details/${clientId}/?username=${window.currentUsername}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.client) {
+                const client = data.client;
+                
+                // Populate edit form
+                document.getElementById('editClientId').value = client.id;
+                document.getElementById('editClientName').value = client.name || '';
+                document.getElementById('editCompanyName').value = client.company_name || '';
+                document.getElementById('editClientEmail').value = client.email || '';
+                document.getElementById('editClientPhone').value = client.phone || '';
+                document.getElementById('editClientAddress').value = client.address || '';
+                document.getElementById('editClientCity').value = client.city || '';
+                document.getElementById('editClientState').value = client.state || '';
+                document.getElementById('editClientCountry').value = client.country || '';
+                document.getElementById('editClientPostalCode').value = client.postal_code || '';
+                document.getElementById('editClientWebsite').value = client.website || '';
+                document.getElementById('editClientNotes').value = client.notes || '';
+                
+                // Show edit modal
+                const editModal = new bootstrap.Modal(document.getElementById('editClientModal'));
+                editModal.show();
+            } else {
+                alert('Failed to load client for editing: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error("Error loading client for editing:", error);
+            alert('An error occurred while loading client data for editing. Please try again.');
+        });
+}
+
+/**
+ * Function to save changes to a client
+ */
+function saveClientChanges() {
+    const form = document.getElementById('editClientForm');
+    
+    // Form validation
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return;
+    }
+    
+    const clientId = document.getElementById('editClientId').value;
+    
+    // Collect form data
+    const clientData = {
+        name: document.getElementById('editClientName').value,
+        company_name: document.getElementById('editCompanyName').value,
+        email: document.getElementById('editClientEmail').value,
+        phone: document.getElementById('editClientPhone').value,
+        address: document.getElementById('editClientAddress').value,
+        city: document.getElementById('editClientCity').value,
+        state: document.getElementById('editClientState').value,
+        country: document.getElementById('editClientCountry').value,
+        postal_code: document.getElementById('editClientPostalCode').value,
+        website: document.getElementById('editClientWebsite').value,
+        notes: document.getElementById('editClientNotes').value,
+        // Set contact_info (for backward compatibility)
+        contact_info: document.getElementById('editClientPhone').value || document.getElementById('editClientEmail').value,
+        username: window.currentUsername
+    };
+    
+    // Update the client
+    fetch(`/api/clients/update/${clientId}/`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(clientData)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Hide modal
+            bootstrap.Modal.getInstance(document.getElementById('editClientModal')).hide();
+            
+            // Refresh client list
+            loadClients();
+            
+            // Show success toast
+            showToast('Success!', 'Client updated successfully.', 'success');
+        } else {
+            alert('Failed to update client: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error("Error updating client:", error);
+        alert('An error occurred while updating the client. Please try again.');
+    });
+}
+
+/**
+ * Helper function to format a date string
+ * @param {string} dateString - ISO date string
+ * @returns {string} Formatted date string
+ */
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleString();
+}
+
+/**
+ * Helper function to show a toast notification
+ * @param {string} title - Toast title
+ * @param {string} message - Toast message
+ * @param {string} type - Toast type (success, info, warning, danger)
+ */
+function showToast(title, message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create a unique ID for this toast
+    const toastId = 'toast-' + Date.now();
+    
+    // Create toast HTML
+    const toastHtml = `
+        <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-${type} bg-opacity-10">
+                <strong class="me-auto">${title}</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    // Add toast to container
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    
+    // Initialize and show the toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+    toast.show();
+    
+    // Remove toast from DOM after it's hidden
+    toastElement.addEventListener('hidden.bs.toast', function() {
+        toastElement.remove();
+    });
+}
+
+/**
+ * Helper function to show a modal with custom content
+ * @param {string} title - Modal title
+ * @param {string} content - Modal HTML content
+ */
+function showModal(title, content) {
+    // Create or get the modal element
+    let modalElement = document.getElementById('dynamic-modal');
+    
+    if (!modalElement) {
+        // Create modal if it doesn't exist
+        modalElement = document.createElement('div');
+        modalElement.className = 'modal fade';
+        modalElement.id = 'dynamic-modal';
+        modalElement.setAttribute('tabindex', '-1');
+        modalElement.setAttribute('aria-hidden', 'true');
+        
+        modalElement.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-info text-white">
+                        <h5 class="modal-title"></h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modalElement);
+    }
+    
+    // Set modal content
+    modalElement.querySelector('.modal-title').innerHTML = title;
+    modalElement.querySelector('.modal-body').innerHTML = content;
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+}
+
+// Initialize validation for all forms
+function initializeFormValidation() {
+    'use strict';
+    const forms = document.querySelectorAll('.needs-validation');
+    
+    Array.prototype.slice.call(forms).forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    initializeFormValidation();
+});
+
+// When client management modal is shown, load clients
+$('#clientManagementModal').on('shown.bs.modal', function() {
+    loadClients();
+});
+
+// Reset forms when add tab is shown
+$('#add-client-tab').on('shown.bs.tab', function() {
+    document.getElementById('addClientForm').reset();
+    document.getElementById('addClientForm').classList.remove('was-validated');
+});
+</script>

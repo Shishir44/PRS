@@ -1,0 +1,71 @@
+{% comment %}
+Deals Table Component - Reusable table for displaying deals
+Parameters:
+- deals: List of deal objects to display
+{% endcomment %}
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle" id="dealTable">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Client</th>
+                <th>Budget</th>
+                <th>Created</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="dealsTableBody">
+            {% if deals %}
+                {% for deal in deals %}
+                <tr data-id="{{ deal.id }}" data-status="{{ deal.status }}">
+                    <td>{{ deal.title }}</td>
+                    <td>{{ deal.client_name }}</td>
+                    <td>${{ deal.budget }}</td>
+                    <td>{{ deal.created_at|date:"M d, Y" }}</td>
+                    <td>
+                        {% if deal.status == 'draft' %}
+                        <span class="badge bg-secondary">Draft</span>
+                        {% elif deal.status == 'pending_verification' %}
+                        <span class="badge bg-warning text-dark">Pending Verification</span>
+                        {% elif deal.status == 'verified' %}
+                        <span class="badge bg-success">Verified</span>
+                        {% elif deal.status == 'rejected' %}
+                        <span class="badge bg-danger">Rejected</span>
+                        {% else %}
+                        <span class="badge bg-info">{{ deal.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                Actions
+                            </button>
+                            <ul class="dropdown-menu shadow-sm">
+                                <li><a class="dropdown-item" href="#" onclick="viewDealDetails('{{ deal.id }}')"><i class="bi bi-eye me-2"></i>View Details</a></li>
+                                {% if deal.status == 'draft' %}
+                                <li><a class="dropdown-item" href="#" onclick="showEditDealModal('{{ deal.id }}')"><i class="bi bi-pencil me-2"></i>Edit Deal</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="confirmSubmitDeal('{{ deal.id }}')"><i class="bi bi-check-circle me-2"></i>Submit for Verification</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="confirmDeleteDeal('{{ deal.id }}')"><i class="bi bi-trash me-2"></i>Delete Deal</a></li>
+                                {% elif deal.status == 'verified' %}
+                                <li><a class="dropdown-item" href="#" onclick="manageProjects('{{ deal.id }}')"><i class="bi bi-folder-plus me-2"></i>Manage Projects</a></li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-4">
+                        <div class="alert alert-info mb-0">
+                            <p class="mb-0">No deals found. Create your first deal using the "Create Deal" button.</p>
+                        </div>
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
